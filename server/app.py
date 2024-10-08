@@ -17,39 +17,47 @@ api = Api(app)
 
 class Plants(Resource):
     def get(self):
-        all_plants=Plant.query.all()
-        return make_response(jsonify(all_plants))
-    
+        plants = Plant.query.all()  # Fetch all plants
+        all_plants = [plant.to_dict() for plant in plants]  # Convert each plant to a dictionary
+        return make_response(jsonify(all_plants), 200)  # Return serialized data with a 200 status code
 
     def post(self):
         data = request.get_json()
-        name = Plant(data['name'])
-        price = Plant(data['price'])
-        image = Plant(data['image'])
 
-        new_plant =Plant(name,image,price)
-        db.session.add(new_plant)
-        db.session.commit()
+        # Create a new Plant object with the correct arguments
+        new_plant = Plant(
+            name=data['name'],
+            image=data['image'],
+            price=data['price']
+        )
 
-        return new_plant.to_dict()
+        db.session.add(new_plant)  # Add the new plant to the session
+        db.session.commit()  # Commit the session to persist the data
+
+        # Return the serialized new plant object with a 201 status code
+        return make_response(jsonify(new_plant.to_dict()), 201)
     
-api.add_resource(Plants, '/plants','/add_plant')
+api.add_resource(Plants, '/plants')
 
 class PlantByID(Resource):
-    def plant_by_id(self,id):
-        plant_by_id = Plant.query.filter_by(id=id).first()
+    def get(self, plant_id):
+        plant_by_id = Plant.query.filter_by(id=plant_id).first()
+        if plant_by_id:
+            return make_response(jsonify(plant_by_id.to_dict()), 200)
+        else:
+            return make_response(jsonify({"error": "Plant not found"}), 404)
 
-        return plant_by_id.to_dict()
+    def delete(self, plant_id):
+        del_plant = Plant.query.filter_by(id=plant_id).first()
+        if del_plant:
+            db.session.delete(del_plant)
+            db.session.commit()
+            return make_response(f'Plant with ID {plant_id} deleted successfully', 200)
+        else:
+            return make_response(f'Plant with ID {plant_id} not found', 404)
     
-    def delete(self,id):
-        del_plant = Plant.query.filter_by(id=id).first()
-        db.session.delete(del_plant)
-        db.session.commit()
-
-        return  f'plant id {id} deleted successifuly'
 
 api.add_resource(PlantByID, '/plants/<int:plant_id>')
-        
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
